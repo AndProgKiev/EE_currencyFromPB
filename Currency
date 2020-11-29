@@ -1,0 +1,38 @@
+
+
+public class Currency {
+    private String currencyName;
+    private double rateNB;
+    private String date;
+
+    public Currency() {
+    }
+
+    public Currency(String currencyName, double rateNB, String date) {
+
+        this.currencyName = currencyName;
+        this.rateNB = rateNB;
+        this.date = date;
+    }
+
+    public String getCurrencyName() {
+        return currencyName;
+    }
+
+    public double getRateNB() {
+        return rateNB;
+    }
+
+    public String getDate() {
+        return date;
+    }
+
+    @Override
+    public String toString() {
+        return "Currency{" +
+                "currencyName='" + currencyName + '\'' +
+                ", rateNB=" + rateNB +
+                ", date='" + date + '\'' +
+                '}';
+    }
+}
