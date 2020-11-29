@@ -1,0 +1,118 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MyUtil {
+
+
+    public static void createTable(String login,String password, String dbURL, String tableName) throws SQLException {
+        try(Connection con= DriverManager.getConnection(dbURL,login,password)){
+            Statement st=con.createStatement();
+            st.execute("DROP TABLE IF EXISTS "+tableName);
+            st.execute("CREATE TABLE "+ tableName +" (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY," +
+                           "rateDate VARCHAR(20) NOT NULL," +
+                           "CurrencyName VARCHAR (10) NOT NULL," +
+                           "RateNB DOUBLE NOT NULL)");
+        }
+    }
+
+    public static void addCurrency(Currency currency, Connection connection, String tableName) throws SQLException{
+        try(PreparedStatement ps=connection.prepareStatement(
+        "INSERT INTO "+ tableName +"(rateDate,CurrencyName,RateNB) VALUE (?,?,?)")) {
+            ps.setString(1,currency.getDate());
+            ps.setString(2,currency.getCurrencyName());
+            ps.setDouble(3,currency.getRateNB());
+            ps.executeUpdate();
+        }
+    }
+
+    public static double getAveregeRate(Connection connection, String tableName) throws SQLException {
+        List<Double> rateList=new ArrayList<>();
+        double rate=0;
+        int count=0;
+
+        String query="select RateNB from "+tableName;
+        try(Statement st=connection.createStatement()) {
+            try(ResultSet rs= st.executeQuery(query)) {
+                while (rs.next()){
+                  double d=rs.getDouble(1);
+                    System.out.println(d);
+                  rateList.add(d);
+                  count++;
+                }
+            }
+        }
+        for (double element:rateList){
+            rate+=element;
+        }
+
+        return rate/count;
+    }
+
+    public static String getUrlReq(String date) throws IOException {
+        URL url=new URL("https://api.privatbank.ua/p24api/exchange_rates?json&date="+date);
+        HttpURLConnection con=(HttpURLConnection) url.openConnection();
+
+        con.setRequestMethod("GET");
+        con.setDoOutput(true);
+
+        con.connect();
+        String res=null;
+
+        try(InputStream in=con.getInputStream()) {
+            res=MyUtil.convertStreamToString(in);
+        }
+        return res;
+    }
+
+    public static String convertStreamToString(InputStream stream) throws IOException {
+        BufferedReader bf=new BufferedReader(new InputStreamReader(stream));
+        StringBuilder sb=new StringBuilder();
+
+        String line;
+        while ((line=bf.readLine())!=null){
+            sb.append(line).append("\n");
+        }
+        return sb.toString();
+    }
+
+
+
+    public static Currency getCurrencyParsing(String responseString, String currencyN){
+        String date="";
+        String currencyName=currencyN;
+        double rateNB=0;
+
+        char[] arrChar=responseString.toCharArray();
+        int dateIndex=responseString.indexOf("date");
+        int currencyIndex=responseString.indexOf(currencyN);
+
+        for(int i=dateIndex+7;i<arrChar.length;i++){
+            if (arrChar[i]=='"'){
+                break;
+            }else {
+                date+=arrChar[i];
+            }
+        }
+
+        String tempDoubleString="";
+        for (int i=currencyIndex+18;i<arrChar.length;i++){
+            if (arrChar[i]==','){
+                break;
+            }else {
+                tempDoubleString+=arrChar[i];
+            }
+        }
+        rateNB=Double.parseDouble(tempDoubleString);
+        Currency currency = new Currency(currencyName, rateNB, date);
+
+         return currency;
+
+    }
+}
